@@ -469,29 +469,42 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
     
     // --- LÓGICA DE FILTRO (STATUS) ---
     var listaFiltrada = [];
-    var limiteDias = 7; 
-    
+    var limiteDias = 7;
+
+    Logger.log("DEBUG FILTRO: Aplicando filtro '" + filtroStatus + "' na lista de " + listaCompleta.length + " itens.");
+
     if (filtroStatus === "pendentes") {
       listaFiltrada = listaCompleta.filter(m => m.tipo === "Pendente" && m.diasRestantes <= limiteDias);
+      Logger.log("DEBUG FILTRO: Filtro 'pendentes' - itens com tipo='Pendente' e diasRestantes <= 7");
     } else if (filtroStatus === "vencidos") {
       listaFiltrada = listaCompleta.filter(m => m.status === "Vencido");
+      Logger.log("DEBUG FILTRO: Filtro 'vencidos' - itens com status='Vencido'");
     } else if (filtroStatus === "prazo") {
       listaFiltrada = listaCompleta.filter(m => (m.status === "Em Dia" || m.status === "Alerta"));
+      Logger.log("DEBUG FILTRO: Filtro 'prazo' - itens com status='Em Dia' ou 'Alerta'");
     } else if (filtroStatus === "realizados") {
       listaFiltrada = listaCompleta.filter(m => m.tipo === "Realizado");
+      Logger.log("DEBUG FILTRO: Filtro 'realizados' - itens com tipo='Realizado'");
     } else { // "todos"
-      listaFiltrada = listaCompleta; 
+      listaFiltrada = listaCompleta;
+      Logger.log("DEBUG FILTRO: Filtro 'todos' - sem filtro aplicado");
     }
-    
+
     Logger.log("DEBUG: Filtro '" + filtroStatus + "' aplicado. " + listaFiltrada.length + " itens restantes.");
+
+    // Log detalhado dos itens filtrados
+    listaFiltrada.forEach(function(item, index) {
+      Logger.log("DEBUG FILTRADO[" + index + "]: " + item.maquina + " | Item: " + item.itens.substring(0, 50) + "... | Tipo: " + item.tipo + " | Status: " + item.status);
+    });
 
     // --- LÓGICA DE FILTRO (MÁQUINA) ---
     if (filtroMaquina && filtroMaquina !== "todas") {
+      var antesDoFiltroMaquina = listaFiltrada.length;
       listaFiltrada = listaFiltrada.filter(function(m) {
         // Compara os nomes "limpos"
         return String(m.maquina).trim() === String(filtroMaquina).trim();
       });
-      Logger.log("DEBUG: Filtro de MÁQUINA '" + filtroMaquina + "' aplicado. " + listaFiltrada.length + " itens restantes.");
+      Logger.log("DEBUG: Filtro de MÁQUINA '" + filtroMaquina + "' aplicado. " + antesDoFiltroMaquina + " → " + listaFiltrada.length + " itens.");
     }
 
     // --- LÓGICA DE ORDENAÇÃO ---
