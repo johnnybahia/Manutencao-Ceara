@@ -580,7 +580,6 @@ function arquivarManutencoesRealizadas() {
     var linhasArquivadas = 0;
     var linhasIgnoradas = 0;
     var novasLinhasHistorico = []; // Array para operação em lote
-    var linhasParaLimpar = []; // Array de números de linha para limpar
 
     // Percorre todas as linhas da aba Máquinas
     for (var i = 0; i < dados.length; i++) {
@@ -636,7 +635,6 @@ function arquivarManutencoesRealizadas() {
         ];
 
         novasLinhasHistorico.push(novaLinhaHistorico);
-        linhasParaLimpar.push(numeroLinha);
         linhasArquivadas++;
       }
     }
@@ -649,14 +647,9 @@ function arquivarManutencoesRealizadas() {
         .setValues(novasLinhasHistorico);
       Logger.log("Linhas adicionadas ao histórico com sucesso.");
 
-      // Operação em lote: Limpa todas as células de uma vez
-      Logger.log("Limpando status 'Realizado' de " + linhasParaLimpar.length + " linhas...");
-      for (var k = 0; k < linhasParaLimpar.length; k++) {
-        var numeroLinhaLimpar = linhasParaLimpar[k];
-        abaMaquinas.getRange(numeroLinhaLimpar, 4).clearContent(); // Col D
-        abaMaquinas.getRange(numeroLinhaLimpar, 6, 1, 4).clearContent(); // Cols F, G, H, I
-      }
-      Logger.log("Limpeza concluída.");
+      // NÃO limpa mais os dados da aba Máquinas
+      // Os dados permanecem e serão sobrescritos na próxima manutenção
+      // O sistema detecta novos registros pela mudança na ProximaManutencao
     }
 
     SpreadsheetApp.flush();
