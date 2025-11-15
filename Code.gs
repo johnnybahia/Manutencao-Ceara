@@ -174,18 +174,23 @@ function verificarLogin(usuario, senha) {
 
 function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filtroMaquinaAtual) {
   Logger.log("--- INÍCIO REGISTRARMANUTENCAO ---");
-  Logger.log("Procurando por IDENTIFICADOR: '" + identificador + "' para usuário: '" + nomeUsuario + "'");
+  Logger.log("Número da linha recebido: '" + identificador + "' para usuário: '" + nomeUsuario + "'");
   Logger.log("Filtros atuais: Status=" + filtroStatusAtual + ", Maquina=" + filtroMaquinaAtual);
 
   if (!identificador) {
-    Logger.log("ERRO FATAL: Identificador é nulo ou vazio.");
-    return { status: "erro", mensagem: "Identificador da máquina não foi enviado." };
+    Logger.log("ERRO FATAL: Número da linha é nulo ou vazio.");
+    return { status: "erro", mensagem: "Número da linha não foi enviado." };
   }
 
-  // --- NOVA LÓGICA DE BUSCA ---
-  var partes = String(identificador).split('|');
-  var nomeMaquinaParaBuscar = String(partes[0] || "").trim();
-  var itemParaBuscar = String(partes[1] || "").trim();
+  // --- NOVA LÓGICA: Usa o número da linha diretamente ---
+  var linhaEncontrada = parseInt(identificador, 10);
+
+  if (isNaN(linhaEncontrada) || linhaEncontrada < 2) {
+    Logger.log("ERRO FATAL: Número da linha inválido: '" + identificador + "'");
+    return { status: "erro", mensagem: "Número da linha inválido." };
+  }
+
+  Logger.log("Linha a ser atualizada: " + linhaEncontrada);
   // --- FIM DA NOVA LÓGICA ---
 
   try {
@@ -195,27 +200,11 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
       Logger.log("ERRO FATAL: Aba '" + NOME_ABA_MAQUINAS + "' não encontrada.");
       return { status: "erro", mensagem: "Aba da planilha de máquinas não foi encontrada." };
     }
-    
-    // Ler Coluna A (Máquina) e Coluna C (Itens)
-    var dadosBusca = abaMaquinas.getRange(2, 1, abaMaquinas.getLastRow() - 1, 3).getValues(); 
-    var linhaEncontrada = -1;
-    
-    Logger.log("Buscando por Máquina='" + nomeMaquinaParaBuscar + "' E Item='" + itemParaBuscar + "'");
 
-    for (var i = 0; i < dadosBusca.length; i++) {
-      var nomePlanilha = String(dadosBusca[i][0] || "").trim(); // Col A
-      var itemPlanilha = String(dadosBusca[i][2] || "").trim(); // Col C (índice 2)
-
-      if (nomePlanilha === nomeMaquinaParaBuscar && itemPlanilha === itemParaBuscar) { 
-        linhaEncontrada = i + 2; // +2 porque o range começa da linha 2
-        Logger.log("--- IDENTIFICADOR ENCONTRADO! --- Linha: " + linhaEncontrada);
-        break;
-      }
-    }
-    
-    if (linhaEncontrada === -1) {
-      Logger.log("--- ERRO: IDENTIFICADOR NÃO ENCONTRADO! ---");
-      return { status: "erro", mensagem: "Máquina/Item não encontrado. O identificador '" + identificador + "' não foi localizado na planilha." };
+    // Validar se a linha existe
+    if (linhaEncontrada > abaMaquinas.getLastRow()) {
+      Logger.log("ERRO: Linha " + linhaEncontrada + " não existe na planilha.");
+      return { status: "erro", mensagem: "Linha " + linhaEncontrada + " não existe na planilha." };
     }
     
     // A partir daqui, a lógica é a mesma, pois já temos a 'linhaEncontrada'
@@ -275,48 +264,37 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
 
 function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual) {
   Logger.log("--- INÍCIO DESFAZERMANUTENCAO ---");
-  Logger.log("Procurando por IDENTIFICADOR: '" + identificador + "'");
+  Logger.log("Número da linha recebido: '" + identificador + "'");
   Logger.log("Filtros atuais: Status=" + filtroStatusAtual + ", Maquina=" + filtroMaquinaAtual);
 
   if (!identificador) {
-    Logger.log("ERRO FATAL: Identificador é nulo ou vazio.");
-    return { status: "erro", mensagem: "Identificador da máquina não foi enviado." };
+    Logger.log("ERRO FATAL: Número da linha é nulo ou vazio.");
+    return { status: "erro", mensagem: "Número da linha não foi enviado." };
   }
 
-  // --- NOVA LÓGICA DE BUSCA ---
-  var partes = String(identificador).split('|');
-  var nomeMaquinaParaBuscar = String(partes[0] || "").trim();
-  var itemParaBuscar = String(partes[1] || "").trim();
+  // --- NOVA LÓGICA: Usa o número da linha diretamente ---
+  var linhaEncontrada = parseInt(identificador, 10);
+
+  if (isNaN(linhaEncontrada) || linhaEncontrada < 2) {
+    Logger.log("ERRO FATAL: Número da linha inválido: '" + identificador + "'");
+    return { status: "erro", mensagem: "Número da linha inválido." };
+  }
+
+  Logger.log("Linha a ser restaurada: " + linhaEncontrada);
   // --- FIM DA NOVA LÓGICA ---
 
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var abaMaquinas = ss.getSheetByName(NOME_ABA_MAQUINAS);
-      if (!abaMaquinas) {
-        Logger.log("ERRO FATAL: Aba '" + NOME_ABA_MAQUINAS + "' não encontrada.");
-        return { status: "erro", mensagem: "Aba da planilha de máquinas não foi encontrada." };
+    if (!abaMaquinas) {
+      Logger.log("ERRO FATAL: Aba '" + NOME_ABA_MAQUINAS + "' não encontrada.");
+      return { status: "erro", mensagem: "Aba da planilha de máquinas não foi encontrada." };
     }
 
-    // Ler Coluna A (Máquina) e Coluna C (Itens)
-    var dadosBusca = abaMaquinas.getRange(2, 1, abaMaquinas.getLastRow() - 1, 3).getValues(); 
-    var linhaEncontrada = -1;
-    
-    Logger.log("Buscando por Máquina='" + nomeMaquinaParaBuscar + "' E Item='" + itemParaBuscar + "'");
-
-    for (var i = 0; i < dadosBusca.length; i++) {
-      var nomePlanilha = String(dadosBusca[i][0] || "").trim(); // Col A
-      var itemPlanilha = String(dadosBusca[i][2] || "").trim(); // Col C (índice 2)
-
-      if (nomePlanilha === nomeMaquinaParaBuscar && itemPlanilha === itemParaBuscar) { 
-        linhaEncontrada = i + 2; 
-        Logger.log("--- IDENTIFICADOR ENCONTRADO! --- Linha: " + linhaEncontrada);
-        break;
-      }
-    }
-    
-    if (linhaEncontrada === -1) {
-        Logger.log("--- ERRO: IDENTIFICADOR NÃO ENCONTRADO! ---");
-        return { status: "erro", mensagem: "Máquina/Item não encontrado. O identificador '" + identificador + "' não foi localizado na planilha." };
+    // Validar se a linha existe
+    if (linhaEncontrada > abaMaquinas.getLastRow()) {
+      Logger.log("ERRO: Linha " + linhaEncontrada + " não existe na planilha.");
+      return { status: "erro", mensagem: "Linha " + linhaEncontrada + " não existe na planilha." };
     }
     
     Logger.log("Linha " + linhaEncontrada + ": Lendo backup da Coluna I.");
@@ -397,11 +375,13 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
         diasRestantes: 0
       };
 
-      // --- ATUALIZAÇÃO: Cria o identificador único ---
-      // CORREÇÃO: Usa o valor REAL da coluna (linha[2]) e não o valor com fallback (item.itens)
-      // Isso garante que o identificador corresponda exatamente ao que está na planilha
-      var itensReal = linha[2] || ""; // Usa string vazia se não houver itens
-      item.identificador = item.maquina + "|" + itensReal;
+      // --- ATUALIZAÇÃO: Usa o NÚMERO DA LINHA como identificador único ---
+      // Isso é mais confiável que usar Máquina|Item porque:
+      // 1. Cada linha tem um número único
+      // 2. Não há problemas com itens vazios ou duplicados
+      // 3. A busca é direta e rápida
+      item.identificador = String(i + 2); // +2 porque começamos da linha 2
+      item.numeroLinha = i + 2; // Guardamos também como número
       // --- FIM DA ATUALIZAÇÃO ---
 
       // Verifica a COLUNA F (Status)
