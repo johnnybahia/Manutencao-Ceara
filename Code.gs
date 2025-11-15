@@ -579,6 +579,8 @@ function arquivarManutencoesRealizadas() {
 
     var linhasArquivadas = 0;
     var linhasIgnoradas = 0;
+    var novasLinhasHistorico = []; // Array para operação em lote
+    var linhasParaLimpar = []; // Array de números de linha para limpar
 
     // Percorre todas as linhas da aba Máquinas
     for (var i = 0; i < dados.length; i++) {
@@ -613,13 +615,12 @@ function arquivarManutencoesRealizadas() {
             proximaManutencao instanceof Date &&
             proximaManutencaoHistorico.getTime() === proximaManutencao.getTime()) {
           jaExiste = true;
-          Logger.log("Linha " + numeroLinha + " já existe no histórico com a mesma data. Ignorando.");
           linhasIgnoradas++;
           break;
         }
       }
 
-      // Se não existe, adiciona ao histórico
+      // Se não existe, prepara para adicionar ao histórico
       if (!jaExiste) {
         var novaLinhaHistorico = [
           numeroLinha,
@@ -634,15 +635,28 @@ function arquivarManutencoesRealizadas() {
           new Date() // Data do arquivamento
         ];
 
-        abaHistorico.appendRow(novaLinhaHistorico);
-        Logger.log("Linha " + numeroLinha + " arquivada no histórico. Máquina: " + maquina);
+        novasLinhasHistorico.push(novaLinhaHistorico);
+        linhasParaLimpar.push(numeroLinha);
         linhasArquivadas++;
-
-        // Limpa o status "Realizado" da aba Máquinas após arquivar
-        abaMaquinas.getRange(numeroLinha, 4).clearContent(); // Col D
-        abaMaquinas.getRange(numeroLinha, 6, 1, 4).clearContent(); // Cols F, G, H, I
-        Logger.log("Status 'Realizado' limpo da linha " + numeroLinha + " na aba Máquinas.");
       }
+    }
+
+    // Operação em lote: Adiciona todas as linhas ao histórico de uma vez
+    if (novasLinhasHistorico.length > 0) {
+      Logger.log("Arquivando " + novasLinhasHistorico.length + " linhas no histórico...");
+      var proximaLinhaHistorico = abaHistorico.getLastRow() + 1;
+      abaHistorico.getRange(proximaLinhaHistorico, 1, novasLinhasHistorico.length, 10)
+        .setValues(novasLinhasHistorico);
+      Logger.log("Linhas adicionadas ao histórico com sucesso.");
+
+      // Operação em lote: Limpa todas as células de uma vez
+      Logger.log("Limpando status 'Realizado' de " + linhasParaLimpar.length + " linhas...");
+      for (var k = 0; k < linhasParaLimpar.length; k++) {
+        var numeroLinhaLimpar = linhasParaLimpar[k];
+        abaMaquinas.getRange(numeroLinhaLimpar, 4).clearContent(); // Col D
+        abaMaquinas.getRange(numeroLinhaLimpar, 6, 1, 4).clearContent(); // Cols F, G, H, I
+      }
+      Logger.log("Limpeza concluída.");
     }
 
     SpreadsheetApp.flush();
