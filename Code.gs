@@ -242,15 +242,24 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
     abaMaquinas.getRange(linhaEncontrada, 8).setValue(dataConfirmacao);      // Col H
     
     Logger.log("Linha " + linhaEncontrada + ": Forçando salvamento (flush)...");
-    SpreadsheetApp.flush(); 
-    
+    SpreadsheetApp.flush();
+
+    // Aguarda um momento para garantir que o flush completou
+    Utilities.sleep(100);
+
     Logger.log("--- SUCESSO! Manutenção registrada. ---");
+
+    Logger.log("VERIFICAÇÃO: Lendo novamente a linha " + linhaEncontrada + " para confirmar gravação:");
+    var statusGravado = abaMaquinas.getRange(linhaEncontrada, 6).getValue();
+    Logger.log("VERIFICAÇÃO: Status na planilha (Col F) = '" + statusGravado + "'");
 
     Logger.log("Buscando dados atualizados para o cliente...");
     var dadosAtualizados = buscarDadosManutencaoComFiltro(filtroStatusAtual, filtroMaquinaAtual);
-    
-    return { 
-      status: "sucesso", 
+
+    Logger.log("VERIFICAÇÃO: Dados retornados contêm " + dadosAtualizados.length + " itens.");
+
+    return {
+      status: "sucesso",
       dados: dadosAtualizados
     };
     
@@ -326,7 +335,10 @@ function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual
     abaMaquinas.getRange(linhaEncontrada, 6, 1, 4).clearContent(); // Limpa F, G, H, I
 
     Logger.log("Linha " + linhaEncontrada + ": Forçando salvamento (flush)...");
-    SpreadsheetApp.flush(); 
+    SpreadsheetApp.flush();
+
+    // Aguarda um momento para garantir que o flush completou
+    Utilities.sleep(100);
 
     Logger.log("--- SUCESSO! Manutenção desfeita. ---");
 
@@ -393,13 +405,17 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
       // --- FIM DA ATUALIZAÇÃO ---
 
       // Verifica a COLUNA F (Status)
-      if (String(statusPlanilha).trim().toLowerCase() === "realizado") {
-        
+      var statusLimpo = String(statusPlanilha).trim().toLowerCase();
+      Logger.log("DEBUG - Linha " + (i+2) + " | Máquina: " + nomeMaquina + " | Status da planilha: '" + statusPlanilha + "' | Status limpo: '" + statusLimpo + "'");
+
+      if (statusLimpo === "realizado") {
+
         item.tipo = "Realizado";
         item.status = "Realizado";
         item.statusTexto = "MANUTENÇÃO REALIZADA";
-        item.realizadoPor = realizadoPor || "Não informado"; 
-        item.diasRestantes = 99999; 
+        item.realizadoPor = realizadoPor || "Não informado";
+        item.diasRestantes = 99999;
+        Logger.log("DEBUG - Linha " + (i+2) + " marcada como REALIZADO"); 
         
         var dataConfirmacao = linha[7]; // Col H
         if (dataConfirmacao && dataConfirmacao instanceof Date && !isNaN(new Date(dataConfirmacao))) {
@@ -410,10 +426,11 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
           item.dataConfirmacaoFormatada = "Data não registrada";
         }
       
-      } else { 
+      } else {
         // Se a Coluna F NÃO é "Realizado", é "Pendente"
+        Logger.log("DEBUG - Linha " + (i+2) + " NÃO é realizado, processando como PENDENTE");
         item.tipo = "Pendente";
-        
+
         var proximaManutencaoValor = linha[4]; // Col E
         
         if (!proximaManutencaoValor) {
