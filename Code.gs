@@ -530,6 +530,157 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
 }
 
 /* ==========================================================
+   FUNÇÃO DE ARQUIVAMENTO AUTOMÁTICO (A CADA 6 DIAS)
+   ========================================================== */
+function arquivarManutencoesRealizadas() {
+  Logger.log("=== INÍCIO DO ARQUIVAMENTO AUTOMÁTICO ===");
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var abaMaquinas = ss.getSheetByName(NOME_ABA_MAQUINAS);
+    var abaHistorico = ss.getSheetByName("Historico");
+
+    // Cria a aba Historico se não existir
+    if (!abaHistorico) {
+      Logger.log("Aba 'Historico' não existe. Criando...");
+      abaHistorico = ss.insertSheet("Historico");
+
+      // Cria cabeçalho
+      abaHistorico.getRange(1, 1, 1, 10).setValues([[
+        "NumeroLinha", "Máquina", "Intervalo", "Itens",
+        "DataConfirmacao", "ProximaManutencao", "Status",
+        "RealizadoPor", "DataRealizacao", "DataArquivamento"
+      ]]);
+      abaHistorico.getRange(1, 1, 1, 10).setFontWeight("bold");
+      Logger.log("Aba 'Historico' criada com sucesso.");
+    }
+
+    // Lê todas as linhas da aba Máquinas
+    var ultimaLinha = abaMaquinas.getLastRow();
+    var dados = abaMaquinas.getRange(2, 1, ultimaLinha - 1, 9).getValues();
+
+    // Lê o histórico existente
+    var ultimaLinhaHistorico = abaHistorico.getLastRow();
+    var historicoExistente = [];
+    if (ultimaLinhaHistorico > 1) {
+      historicoExistente = abaHistorico.getRange(2, 1, ultimaLinhaHistorico - 1, 10).getValues();
+    }
+
+    var linhasArquivadas = 0;
+    var linhasIgnoradas = 0;
+
+    // Percorre todas as linhas da aba Máquinas
+    for (var i = 0; i < dados.length; i++) {
+      var linha = dados[i];
+      var numeroLinha = i + 2; // +2 porque começamos da linha 2
+
+      var maquina = linha[0];
+      var intervalo = linha[1];
+      var itens = linha[2];
+      var dataConfirmacao = linha[3]; // Col D
+      var proximaManutencao = linha[4]; // Col E
+      var status = linha[5]; // Col F
+      var realizadoPor = linha[6]; // Col G
+      var dataRealizacao = linha[7]; // Col H
+
+      // Verifica se o status é "Realizado"
+      if (String(status).trim().toLowerCase() !== "realizado") {
+        continue; // Pula linhas que não estão realizadas
+      }
+
+      // Verifica se já existe no histórico
+      var jaExiste = false;
+
+      for (var h = 0; h < historicoExistente.length; h++) {
+        var linhaHistorico = historicoExistente[h];
+        var numeroLinhaHistorico = linhaHistorico[0];
+        var proximaManutencaoHistorico = linhaHistorico[5];
+
+        // Se o número da linha é o mesmo E a data da ProximaManutencao é a mesma
+        if (numeroLinhaHistorico === numeroLinha &&
+            proximaManutencaoHistorico instanceof Date &&
+            proximaManutencao instanceof Date &&
+            proximaManutencaoHistorico.getTime() === proximaManutencao.getTime()) {
+          jaExiste = true;
+          Logger.log("Linha " + numeroLinha + " já existe no histórico com a mesma data. Ignorando.");
+          linhasIgnoradas++;
+          break;
+        }
+      }
+
+      // Se não existe, adiciona ao histórico
+      if (!jaExiste) {
+        var novaLinhaHistorico = [
+          numeroLinha,
+          maquina,
+          intervalo,
+          itens || "Nenhum item cadastrado",
+          dataConfirmacao,
+          proximaManutencao,
+          status,
+          realizadoPor,
+          dataRealizacao,
+          new Date() // Data do arquivamento
+        ];
+
+        abaHistorico.appendRow(novaLinhaHistorico);
+        Logger.log("Linha " + numeroLinha + " arquivada no histórico. Máquina: " + maquina);
+        linhasArquivadas++;
+
+        // Limpa o status "Realizado" da aba Máquinas após arquivar
+        abaMaquinas.getRange(numeroLinha, 4).clearContent(); // Col D
+        abaMaquinas.getRange(numeroLinha, 6, 1, 4).clearContent(); // Cols F, G, H, I
+        Logger.log("Status 'Realizado' limpo da linha " + numeroLinha + " na aba Máquinas.");
+      }
+    }
+
+    SpreadsheetApp.flush();
+
+    Logger.log("=== ARQUIVAMENTO CONCLUÍDO ===");
+    Logger.log("Linhas arquivadas: " + linhasArquivadas);
+    Logger.log("Linhas ignoradas (duplicadas): " + linhasIgnoradas);
+
+    return {
+      sucesso: true,
+      linhasArquivadas: linhasArquivadas,
+      linhasIgnoradas: linhasIgnoradas
+    };
+
+  } catch (e) {
+    Logger.log("ERRO no arquivamento: " + e.message);
+    Logger.log("Stack: " + e.stack);
+    return {
+      sucesso: false,
+      erro: e.message
+    };
+  }
+}
+
+/* ==========================================================
+   FUNÇÃO PARA CONFIGURAR O TRIGGER AUTOMÁTICO
+   ========================================================== */
+function configurarTriggerArquivamento() {
+  // Remove triggers antigos para evitar duplicatas
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'arquivarManutencoesRealizadas') {
+      ScriptApp.deleteTrigger(triggers[i]);
+      Logger.log("Trigger antigo removido.");
+    }
+  }
+
+  // Cria novo trigger para executar a cada 6 dias
+  ScriptApp.newTrigger('arquivarManutencoesRealizadas')
+    .timeBased()
+    .everyDays(6)
+    .atHour(2) // Executa às 2h da manhã
+    .create();
+
+  Logger.log("Trigger configurado: arquivarManutencoesRealizadas será executado a cada 6 dias às 2h.");
+  return "Trigger configurado com sucesso!";
+}
+
+/* ==========================================================
    FUNÇÃO DE DISPARADOR DE E-MAILS
    ========================================================== */
 function enviarEmailsNotificacao() {
