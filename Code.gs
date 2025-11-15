@@ -406,6 +406,17 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
 
       // Verifica a COLUNA F (Status)
       var statusLimpo = String(statusPlanilha).trim().toLowerCase();
+
+      // Log específico para linhas problemáticas
+      var linhaAtual = i + 2;
+      if (linhaAtual === 149 || linhaAtual === 151 || linhaAtual === 152) {
+        Logger.log(">>> LINHA PROBLEMÁTICA " + linhaAtual + " <<<");
+        Logger.log("    Máquina: " + nomeMaquina);
+        Logger.log("    Item (Col C): '" + (linha[2] || "") + "'");
+        Logger.log("    Status (Col F): '" + statusPlanilha + "'");
+        Logger.log("    Identificador que será criado: '" + (nomeMaquina + "|" + (linha[2] || "")) + "'");
+      }
+
       Logger.log("DEBUG - Linha " + (i+2) + " | Máquina: " + nomeMaquina + " | Status da planilha: '" + statusPlanilha + "' | Status limpo: '" + statusLimpo + "'");
 
       if (statusLimpo === "realizado") {
@@ -494,7 +505,8 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
 
     // Log detalhado dos itens filtrados
     listaFiltrada.forEach(function(item, index) {
-      Logger.log("DEBUG FILTRADO[" + index + "]: " + item.maquina + " | Item: " + item.itens.substring(0, 50) + "... | Tipo: " + item.tipo + " | Status: " + item.status);
+      Logger.log("DEBUG FILTRADO[" + index + "]: " + item.maquina + " | Item COMPLETO: " + item.itens + " | Tipo: " + item.tipo + " | Status: " + item.status);
+      Logger.log("DEBUG FILTRADO[" + index + "] - Identificador: '" + item.identificador + "'");
     });
 
     // --- LÓGICA DE FILTRO (MÁQUINA) ---
