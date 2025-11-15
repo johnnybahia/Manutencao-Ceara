@@ -184,8 +184,8 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
 
   // --- NOVA LÓGICA DE BUSCA ---
   var partes = String(identificador).split('|');
-  var nomeMaquinaParaBuscar = String(partes[0]).trim();
-  var itemParaBuscar = String(partes[1]).trim();
+  var nomeMaquinaParaBuscar = String(partes[0] || "").trim();
+  var itemParaBuscar = String(partes[1] || "").trim();
   // --- FIM DA NOVA LÓGICA ---
 
   try {
@@ -203,9 +203,9 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
     Logger.log("Buscando por Máquina='" + nomeMaquinaParaBuscar + "' E Item='" + itemParaBuscar + "'");
 
     for (var i = 0; i < dadosBusca.length; i++) {
-      var nomePlanilha = String(dadosBusca[i][0]).trim(); // Col A
-      var itemPlanilha = String(dadosBusca[i][2]).trim(); // Col C (índice 2)
-      
+      var nomePlanilha = String(dadosBusca[i][0] || "").trim(); // Col A
+      var itemPlanilha = String(dadosBusca[i][2] || "").trim(); // Col C (índice 2)
+
       if (nomePlanilha === nomeMaquinaParaBuscar && itemPlanilha === itemParaBuscar) { 
         linhaEncontrada = i + 2; // +2 porque o range começa da linha 2
         Logger.log("--- IDENTIFICADOR ENCONTRADO! --- Linha: " + linhaEncontrada);
@@ -276,8 +276,8 @@ function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual
 
   // --- NOVA LÓGICA DE BUSCA ---
   var partes = String(identificador).split('|');
-  var nomeMaquinaParaBuscar = String(partes[0]).trim();
-  var itemParaBuscar = String(partes[1]).trim();
+  var nomeMaquinaParaBuscar = String(partes[0] || "").trim();
+  var itemParaBuscar = String(partes[1] || "").trim();
   // --- FIM DA NOVA LÓGICA ---
 
   try {
@@ -295,9 +295,9 @@ function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual
     Logger.log("Buscando por Máquina='" + nomeMaquinaParaBuscar + "' E Item='" + itemParaBuscar + "'");
 
     for (var i = 0; i < dadosBusca.length; i++) {
-      var nomePlanilha = String(dadosBusca[i][0]).trim(); // Col A
-      var itemPlanilha = String(dadosBusca[i][2]).trim(); // Col C (índice 2)
-      
+      var nomePlanilha = String(dadosBusca[i][0] || "").trim(); // Col A
+      var itemPlanilha = String(dadosBusca[i][2] || "").trim(); // Col C (índice 2)
+
       if (nomePlanilha === nomeMaquinaParaBuscar && itemPlanilha === itemParaBuscar) { 
         linhaEncontrada = i + 2; 
         Logger.log("--- IDENTIFICADOR ENCONTRADO! --- Linha: " + linhaEncontrada);
@@ -374,19 +374,22 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
       var realizadoPor = linha[6]; // Col G
       
       var item = {
-        maquina: nomeMaquina, 
+        maquina: nomeMaquina,
         intervalo: linha[1] + " dias",
         itens: linha[2] || "Nenhum item cadastrado",
         tipo: "",
         status: "",
         statusTexto: "",
         proximaData: "",
-        dataConf: null, 
+        dataConf: null,
         diasRestantes: 0
       };
 
       // --- ATUALIZAÇÃO: Cria o identificador único ---
-      item.identificador = item.maquina + "|" + item.itens;
+      // CORREÇÃO: Usa o valor REAL da coluna (linha[2]) e não o valor com fallback (item.itens)
+      // Isso garante que o identificador corresponda exatamente ao que está na planilha
+      var itensReal = linha[2] || ""; // Usa string vazia se não houver itens
+      item.identificador = item.maquina + "|" + itensReal;
       // --- FIM DA ATUALIZAÇÃO ---
 
       // Verifica a COLUNA F (Status)
