@@ -423,12 +423,20 @@
 
         var container = document.getElementById("cards-container");
         container.innerHTML = '<div id="loading-message">Carregando manutenções...</div>';
-        
-        // Chama a função do servidor com AMBOS os filtros
-        google.script.run
-          .withSuccessHandler(onCardsLoaded)
-          .withFailureHandler(onCardsLoadFailure)
-          .buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina); // <-- MODIFICADO
+
+        // Se o filtro for "realizados", busca do histórico
+        if (filtroStatus === 'realizados') {
+          google.script.run
+            .withSuccessHandler(onCardsLoaded)
+            .withFailureHandler(onCardsLoadFailure)
+            .buscarDadosHistorico(filtroMaquina);
+        } else {
+          // Para os demais filtros, busca da aba Máquinas
+          google.script.run
+            .withSuccessHandler(onCardsLoaded)
+            .withFailureHandler(onCardsLoadFailure)
+            .buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina);
+        }
       }
       
       function onCardsLoaded(dadosMaquinas) {
@@ -501,14 +509,17 @@
           }
 
 
-          if (maquina.tipo === "Pendente" && podeRealizar) {
-            // Passamos o IDENTIFICADOR para a função
-            botoesHtml = '<button onclick="cliqueRegistrarManutencao(this, \'' + identificador + '\')">Manutenção Realizada</button>';
-          } 
-          else if (maquina.tipo === "Realizado" && podeDesfazer) {
-            // Passamos o IDENTIFICADOR para a função
-            botoesHtml = '<button class="btn-desfazer" onclick="cliqueDesfazerManutencao(this, \'' + identificador + '\')">Desfazer</button>' + 
-                         '<button onclick="cliqueRegistrarManutencao(this, \'' + identificador + '\')">Registrar Novamente</button>';
+          // Não mostra botões se for um item arquivado (do histórico)
+          if (!maquina.arquivado) {
+            if (maquina.tipo === "Pendente" && podeRealizar) {
+              // Passamos o IDENTIFICADOR para a função
+              botoesHtml = '<button onclick="cliqueRegistrarManutencao(this, \'' + identificador + '\')">Manutenção Realizada</button>';
+            }
+            else if (maquina.tipo === "Realizado" && podeDesfazer) {
+              // Passamos o IDENTIFICADOR para a função
+              botoesHtml = '<button class="btn-desfazer" onclick="cliqueDesfazerManutencao(this, \'' + identificador + '\')">Desfazer</button>' +
+                           '<button onclick="cliqueRegistrarManutencao(this, \'' + identificador + '\')">Registrar Novamente</button>';
+            }
           }
 
           var cardHtml = 

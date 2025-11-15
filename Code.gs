@@ -752,7 +752,11 @@ function buscarDadosHistorico(filtroMaquina) {
         intervalo: linha[2] + " dias",
         itens: linha[3] || "Nenhum item cadastrado",
         realizadoPor: linha[7] || "Não informado",
-        dataConfirmacaoFormatada: ""
+        dataConfirmacaoFormatada: "",
+        tipo: "Realizado",
+        status: "Realizado",
+        statusTexto: "MANUTENÇÃO REALIZADA (ARQUIVADO)",
+        arquivado: true  // Marca como dado do histórico
       };
 
       // Formata a data de realização
