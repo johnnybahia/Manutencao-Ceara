@@ -13,16 +13,23 @@ function doGet(e) {
   // ROTA DE IMPRESSÃO
   if (e.parameter.page === 'print') {
     Logger.log("Requisição para página de impressão recebida.");
-    
+
     var filtroStatus = e.parameter.filtro || 'pendentes';
-    var filtroMaquina = e.parameter.filtroMaquina || 'todas'; 
+    var filtroMaquina = e.parameter.filtroMaquina || 'todas';
     var filtroNome = e.parameter.filtroNome || 'Pendentes';
-    
+
     if (filtroMaquina !== 'todas') {
-      filtroNome += " (Máquina: " + filtroMaquina + ")"; 
+      filtroNome += " (Máquina: " + filtroMaquina + ")";
     }
 
-    var dados = buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina); 
+    // Se o filtro for "realizados", busca do histórico
+    var dados;
+    if (filtroStatus === 'realizados') {
+      dados = buscarDadosHistorico(filtroMaquina);
+    } else {
+      dados = buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina);
+    }
+
     var tabelaHtml = formatarDadosParaImpressao(dados, filtroStatus); 
     
     var template = HtmlService.createTemplateFromFile('Print');
@@ -76,62 +83,66 @@ function getListaDeMaquinas() {
    ========================================================== */
 function formatarDadosParaImpressao(dados, filtro) {
   var html = "";
-  
+
   // Cabeçalhos da Tabela
   html += "<thead><tr>";
-  html += '<th style="width: 50px; text-align: center;">OK</th>'; 
+  html += '<th style="width: 50px; text-align: center;">OK</th>';
   html += "<th>Máquina</th>";
   html += "<th>Intervalo</th>";
-  html += "<th>Itens Necessários</th>";
-  
+  html += "<th>Itens</th>";
+
   if (filtro === "realizados") {
     html += "<th>Realizado Por</th>";
-    html += "<th>Data da Confirmação</th>";
+    html += "<th>Data</th>";
+    html += '<th style="width: 120px;">Assinatura</th>'; // Nova coluna de assinatura
   } else if (filtro === "todos") {
     html += "<th>Próxima Manutenção</th>";
     html += "<th>Realizado Por</th>";
     html += "<th>Data da Confirmação</th>";
-  } else { 
+  } else {
     html += "<th>Próxima Manutenção</th>";
   }
   html += "</tr></thead>";
-  
+
   // Corpo da Tabela
   html += "<tbody>";
-  
+
   if (dados.length === 0) {
-    html += '<tr style="text-align: center;"><td colspan="7">Nenhum dado encontrado para este filtro.</td></tr>';
+    var colspan = (filtro === "realizados") ? "7" : "7";
+    html += '<tr style="text-align: center;"><td colspan="' + colspan + '">Nenhum dado encontrado para este filtro.</td></tr>';
   }
-  
+
   dados.forEach(function(item) {
     html += "<tr>";
     html += '<td style="text-align: center;"><div style="width:20px; height:20px; border:1px solid #333; margin:auto;"></div></td>';
     html += "<td>" + item.maquina + "</td>";
     html += "<td>" + item.intervalo + "</td>";
     html += "<td>" + (item.itens || 'N/A') + "</td>";
-    
+
     if (filtro === "realizados") {
       html += "<td>" + (item.realizadoPor || 'N/A') + "</td>";
       html += "<td>" + (item.dataConfirmacaoFormatada || 'N/A') + "</td>";
-    
+      // Espaço para assinatura - célula vazia com altura para assinatura
+      html += '<td style="height: 40px; border: 1px solid #333;">&nbsp;</td>';
+
     } else if (filtro === "todos") {
       if (item.tipo === "Realizado") {
-        html += "<td> - </td>"; 
+        html += "<td> - </td>";
         html += "<td>" + (item.realizadoPor || 'N/A') + "</td>";
         html += "<td>" + (item.dataConfirmacaoFormatada || 'N/A') + "</td>";
       } else { // é Pendente
-        html += "<td>" + (item.proximaData || 'N/A') + "</td>"; 
-        html += "<td> - </td>"; 
-        html += "<td> - </td>"; 
+        html += "<td>" + (item.proximaData || 'N/A') + "</td>";
+        html += "<td> - </td>";
+        html += "<td> - </td>";
       }
-      
-    } else { 
+
+    } else {
       // Filtros de Pendentes
       html += "<td>" + (item.proximaData || 'N/A') + "</td>";
     }
     html += "</tr>";
   });
-  
+
   html += "</tbody>";
   return html;
 }
@@ -678,6 +689,99 @@ function configurarTriggerArquivamento() {
 
   Logger.log("Trigger configurado: arquivarManutencoesRealizadas será executado a cada 6 dias às 2h.");
   return "Trigger configurado com sucesso!";
+}
+
+/* ==========================================================
+   FUNÇÃO PARA BUSCAR DADOS DO HISTÓRICO (PARA RELATÓRIO)
+   ========================================================== */
+function buscarDadosHistorico(filtroMaquina) {
+  Logger.log("--- BUSCAR DADOS HISTÓRICO ---");
+  Logger.log("Filtro de máquina: '" + filtroMaquina + "'");
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var abaHistorico = ss.getSheetByName("Historico");
+
+    if (!abaHistorico) {
+      Logger.log("AVISO: Aba 'Historico' não existe. Retornando lista vazia.");
+      return [];
+    }
+
+    var ultimaLinha = abaHistorico.getLastRow();
+    if (ultimaLinha <= 1) {
+      Logger.log("AVISO: Aba 'Historico' está vazia. Retornando lista vazia.");
+      return [];
+    }
+
+    // Lê todos os dados do histórico (pula cabeçalho)
+    var dados = abaHistorico.getRange(2, 1, ultimaLinha - 1, 10).getValues();
+    Logger.log("DEBUG: Lidas " + dados.length + " linhas do histórico.");
+
+    var lista = [];
+
+    for (var i = 0; i < dados.length; i++) {
+      var linha = dados[i];
+
+      // Estrutura da aba Historico:
+      // 0: NumeroLinha, 1: Máquina, 2: Intervalo, 3: Itens,
+      // 4: DataConfirmacao, 5: ProximaManutencao, 6: Status,
+      // 7: RealizadoPor, 8: DataRealizacao, 9: DataArquivamento
+
+      var maquina = linha[1];
+      if (!maquina || maquina === "") {
+        continue; // Pula linhas vazias
+      }
+
+      var item = {
+        numeroLinha: linha[0],
+        maquina: maquina,
+        intervalo: linha[2] + " dias",
+        itens: linha[3] || "Nenhum item cadastrado",
+        realizadoPor: linha[7] || "Não informado",
+        dataConfirmacaoFormatada: ""
+      };
+
+      // Formata a data de realização
+      var dataRealizacao = linha[8];
+      if (dataRealizacao && dataRealizacao instanceof Date && !isNaN(new Date(dataRealizacao))) {
+        item.dataConfirmacaoFormatada = dataRealizacao.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }) + ' às ' + dataRealizacao.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        item.dataConfirmacaoFormatada = "Data não registrada";
+      }
+
+      lista.push(item);
+    }
+
+    // Aplica filtro de máquina se necessário
+    if (filtroMaquina && filtroMaquina !== "todas") {
+      var antesDoFiltro = lista.length;
+      lista = lista.filter(function(m) {
+        return String(m.maquina).trim() === String(filtroMaquina).trim();
+      });
+      Logger.log("DEBUG: Filtro de máquina '" + filtroMaquina + "' aplicado. " + antesDoFiltro + " → " + lista.length + " itens.");
+    }
+
+    // Ordena por data de realização (mais recente primeiro)
+    lista.sort(function(a, b) {
+      // Como já temos a string formatada, vamos ordenar por linha (mais recente = maior número)
+      return b.numeroLinha - a.numeroLinha;
+    });
+
+    Logger.log("DEBUG: Busca do histórico concluída. Retornando " + lista.length + " itens.");
+    return lista;
+
+  } catch (e) {
+    Logger.log("ERRO GRAVE em buscarDadosHistorico: " + e.message);
+    Logger.log("Stack: " + e.stack);
+    return [];
+  }
 }
 
 /* ==========================================================
