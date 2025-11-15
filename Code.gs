@@ -541,7 +541,7 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
 }
 
 /* ==========================================================
-   FUNÇÃO DE ARQUIVAMENTO AUTOMÁTICO (A CADA 6 DIAS)
+   FUNÇÃO DE ARQUIVAMENTO AUTOMÁTICO (DIARIAMENTE)
    ========================================================== */
 function arquivarManutencoesRealizadas() {
   Logger.log("=== INÍCIO DO ARQUIVAMENTO AUTOMÁTICO ===");
@@ -680,14 +680,14 @@ function configurarTriggerArquivamento() {
     }
   }
 
-  // Cria novo trigger para executar a cada 6 dias
+  // Cria novo trigger para executar diariamente
   ScriptApp.newTrigger('arquivarManutencoesRealizadas')
     .timeBased()
-    .everyDays(6)
+    .everyDays(1)
     .atHour(2) // Executa às 2h da manhã
     .create();
 
-  Logger.log("Trigger configurado: arquivarManutencoesRealizadas será executado a cada 6 dias às 2h.");
+  Logger.log("Trigger configurado: arquivarManutencoesRealizadas será executado diariamente às 2h.");
   return "Trigger configurado com sucesso!";
 }
 
