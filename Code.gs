@@ -389,54 +389,66 @@ function buscarDadosManutencaoComFiltro(filtroStatus, filtroMaquina) {
       item.identificador = item.maquina + "|" + item.itens;
       // --- FIM DA ATUALIZAÇÃO ---
 
-      // Verifica a COLUNA F (Status)
-      if (String(statusPlanilha).trim().toLowerCase() === "realizado") {
-        
+      // Verifica a COLUNA F (Status) e se a próxima data de manutenção já chegou
+      var isRealizado = String(statusPlanilha).trim().toLowerCase() === "realizado";
+      var proximaManutencaoValor = linha[4]; // Col E
+
+      // BUG FIX: Se está marcado como "Realizado", verifica se a próxima data (Col E)
+      // já chegou ou venceu. Se sim, o item deve voltar a ser tratado como "Pendente".
+      if (isRealizado && proximaManutencaoValor && proximaManutencaoValor instanceof Date && !isNaN(proximaManutencaoValor)) {
+        var proximaCheck = new Date(proximaManutencaoValor);
+        proximaCheck.setHours(0, 0, 0, 0);
+        var diffCheck = Math.ceil((proximaCheck.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffCheck <= 0) {
+          isRealizado = false; // Próxima data chegou/venceu: tratar como Pendente
+        }
+      }
+
+      if (isRealizado) {
+
         item.tipo = "Realizado";
         item.status = "Realizado";
         item.statusTexto = "MANUTENÇÃO REALIZADA";
-        item.realizadoPor = realizadoPor || "Não informado"; 
-        item.diasRestantes = 99999; 
-        
+        item.realizadoPor = realizadoPor || "Não informado";
+        item.diasRestantes = 99999;
+
         var dataConfirmacao = linha[7]; // Col H
         if (dataConfirmacao && dataConfirmacao instanceof Date && !isNaN(new Date(dataConfirmacao))) {
           item.dataConf = new Date(dataConfirmacao);
           item.dataConfirmacaoFormatada = item.dataConf.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' às ' + item.dataConf.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         } else {
-          item.dataConf = null; 
+          item.dataConf = null;
           item.dataConfirmacaoFormatada = "Data não registrada";
         }
-      
-      } else { 
-        // Se a Coluna F NÃO é "Realizado", é "Pendente"
+
+      } else {
+        // Se a Coluna F NÃO é "Realizado", ou se a próxima data já chegou/venceu
         item.tipo = "Pendente";
-        
-        var proximaManutencaoValor = linha[4]; // Col E
-        
+
         if (!proximaManutencaoValor) {
             continue;
         }
 
-        var proximaManutencao = new Date(proximaManutencaoValor); 
-        
+        var proximaManutencao = new Date(proximaManutencaoValor);
+
         if (isNaN(proximaManutencao)) {
-            continue; 
+            continue;
         }
-        
-        proximaManutencao.setHours(0, 0, 0, 0); 
+
+        proximaManutencao.setHours(0, 0, 0, 0);
         item.proximaData = proximaManutencao.toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-        
+
         var diffTime = proximaManutencao.getTime() - hoje.getTime();
         var diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        item.diasRestantes = diffDias; 
-        
-        if (diffDias <= 0) { 
+        item.diasRestantes = diffDias;
+
+        if (diffDias <= 0) {
           item.status = "Vencido";
           item.statusTexto = (diffDias === 0) ? "VENCE HOJE" : "VENCIDO HÁ " + Math.abs(diffDias) + " DIAS";
-        } else if (diffDias <= 2) { 
+        } else if (diffDias <= 2) {
           item.status = "Alerta";
           item.statusTexto = "VENCE EM " + diffDias + " DIAS";
-        } else { 
+        } else {
           item.status = "Em Dia";
           item.statusTexto = "VENCE EM " + diffDias + " DIAS";
         }
