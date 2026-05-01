@@ -172,10 +172,9 @@ function verificarLogin(usuario, senha) {
    FUNÇÕES DE AÇÃO (ATUALIZADAS PARA USAR 'IDENTIFICADOR' E RETORNAR DADOS)
    ========================================================== */
 
-function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filtroMaquinaAtual) {
+function registrarManutencao(identificador, nomeUsuario) {
   Logger.log("--- INÍCIO REGISTRARMANUTENCAO ---");
   Logger.log("Procurando por IDENTIFICADOR: '" + identificador + "' para usuário: '" + nomeUsuario + "'");
-  Logger.log("Filtros atuais: Status=" + filtroStatusAtual + ", Maquina=" + filtroMaquinaAtual);
 
   if (!identificador) {
     Logger.log("ERRO FATAL: Identificador é nulo ou vazio.");
@@ -246,13 +245,7 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
     
     Logger.log("--- SUCESSO! Manutenção registrada. ---");
 
-    Logger.log("Buscando dados atualizados para o cliente...");
-    var dadosAtualizados = buscarDadosManutencaoComFiltro(filtroStatusAtual, filtroMaquinaAtual);
-    
-    return { 
-      status: "sucesso", 
-      dados: dadosAtualizados
-    };
+    return { status: "sucesso" };
     
   } catch (e) {
     Logger.log("--- ERRO GRAVE NO BLOCO 'TRY' ---");
@@ -264,10 +257,9 @@ function registrarManutencao(identificador, nomeUsuario, filtroStatusAtual, filt
 
 // ---------------------------------------------------------------------------------
 
-function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual) {
+function desfazerManutencao(identificador) {
   Logger.log("--- INÍCIO DESFAZERMANUTENCAO ---");
   Logger.log("Procurando por IDENTIFICADOR: '" + identificador + "'");
-  Logger.log("Filtros atuais: Status=" + filtroStatusAtual + ", Maquina=" + filtroMaquinaAtual);
 
   if (!identificador) {
     Logger.log("ERRO FATAL: Identificador é nulo ou vazio.");
@@ -330,13 +322,7 @@ function desfazerManutencao(identificador, filtroStatusAtual, filtroMaquinaAtual
 
     Logger.log("--- SUCESSO! Manutenção desfeita. ---");
 
-    Logger.log("Buscando dados atualizados para o cliente...");
-    var dadosAtualizados = buscarDadosManutencaoComFiltro(filtroStatusAtual, filtroMaquinaAtual);
-    
-    return { 
-      status: "sucesso", 
-      dados: dadosAtualizados
-    };
+    return { status: "sucesso" };
     
   } catch (e) {
     Logger.log("--- ERRO GRAVE NO BLOCO 'TRY' ---");
