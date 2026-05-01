@@ -538,27 +538,23 @@
       function cliqueRegistrarManutencao(botao, identificador) {
         botao.disabled = true;
         botao.innerHTML = "Salvando...";
-        
-        var filtroStatus = document.getElementById("filtro-manutencao").value;
-        var filtroMaquina = document.getElementById("filtro-maquina").value;
-        
+
         google.script.run
           .withSuccessHandler(onManutencaoSuccess)
           .withFailureHandler(function(err) { onManutencaoFailure(err, botao); })
-          .registrarManutencao(identificador, usuarioLogado.nome, filtroStatus, filtroMaquina);
+          .registrarManutencao(identificador, usuarioLogado.nome);
       }
 
       function onManutencaoSuccess(resultado) {
-        
+
         if (resultado && resultado.status === "sucesso") {
-          console.log("Servidor retornou SUCESSO com dados atualizados.");
-          // --- MUDANÇA: Renderiza os dados recebidos ---
-          onCardsLoaded(resultado.dados);
+          console.log("Servidor retornou SUCESSO. Recarregando cards...");
+          carregarCards();
         } else {
           var msgErro = (resultado ? resultado.mensagem : "Resposta nula ou inesperada do servidor.");
           console.error("Servidor retornou um erro:", msgErro);
           alert("Falha ao registrar: \n" + msgErro);
-          carregarCards(); 
+          carregarCards();
         }
       }
       
@@ -586,26 +582,22 @@
         
         botao.disabled = true;
         botao.innerHTML = "Desfazendo...";
-        
-        var filtroStatus = document.getElementById("filtro-manutencao").value;
-        var filtroMaquina = document.getElementById("filtro-maquina").value;
-        
+
         google.script.run
-          .withSuccessHandler(onDesfazerSuccess) 
+          .withSuccessHandler(onDesfazerSuccess)
           .withFailureHandler(function(err) { onDesfazerFailure(err, botao); })
-          .desfazerManutencao(identificador, filtroStatus, filtroMaquina);
+          .desfazerManutencao(identificador);
       }
       
       function onDesfazerSuccess(resultado) {
         if (resultado && resultado.status === "sucesso") {
-          console.log("Manutenção desfeita. Servidor retornou dados atualizados.");
-          // --- MUDANÇA: Renderiza os dados recebidos ---
-          onCardsLoaded(resultado.dados);
+          console.log("Manutenção desfeita. Recarregando cards...");
+          carregarCards();
         } else {
           var msgErro = (resultado ? resultado.mensagem : "Resposta nula ou inesperada do servidor.");
           console.error("Servidor retornou um erro:", msgErro);
           alert("Falha ao desfazer: \n" + msgErro);
-          carregarCards(); 
+          carregarCards();
         }
       }
       
